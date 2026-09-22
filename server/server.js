@@ -189,6 +189,22 @@ app.get("/api/painel/dias", (req, res) => {
   }
 });
 
+// Página inicial — um único link com um menu para abrir o Checklist, o
+// Painel de Execução (TV) ou o Relatório de Produção.
+app.get(["/", "/inicio", "/inicio.html"], (req, res) => {
+  const homeFile = path.join(__dirname, "public", "inicio.html");
+  if (!fs.existsSync(homeFile)) return res.status(404).send("Página inicial não encontrada.");
+  res.sendFile(homeFile);
+});
+
+// Checklist do supervisor — o app de arquivo único, agora servido em um
+// caminho próprio (a página inicial "/" virou o menu acima).
+app.get(["/checklist", "/checklist.html"], (req, res) => {
+  const appFile = path.join(__dirname, "public", "index.html");
+  if (!fs.existsSync(appFile)) return res.status(404).send("Checklist não encontrado.");
+  res.sendFile(appFile);
+});
+
 // Painel de TV — página separada, só leitura, sem interferir na rotina do
 // supervisor. Aceita tanto /painel quanto /painel.html.
 app.get(["/painel", "/painel.html"], (req, res) => {
@@ -240,10 +256,14 @@ const staticDir = fs.existsSync(path.join(publicDir, "index.html"))
     : null;
 
 if (staticDir) {
-  app.use(express.static(staticDir));
+  // index:false porque "/" agora é a página inicial com o menu (rota acima),
+  // não mais o arquivo index.html do checklist diretamente.
+  app.use(express.static(staticDir, { index: false }));
   app.get("*", (req, res, next) => {
     if (req.path.startsWith("/api/")) return next();
-    res.sendFile(path.join(staticDir, "index.html"));
+    // Qualquer caminho desconhecido cai na página inicial, em vez de abrir
+    // o checklist sem contexto.
+    res.redirect("/");
   });
 }
 
